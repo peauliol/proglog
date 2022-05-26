@@ -1,3 +1,6 @@
+build:
+	go build -o bin/proglog
+
 compile:
 	protoc api/v1/*.proto \
 		   	--go_out=. \
