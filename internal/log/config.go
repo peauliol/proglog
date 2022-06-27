@@ -1,5 +1,6 @@
 package log
 
+// Config segment configuration
 type Config struct {
 	Segment struct {
 		MaxStoreBytes uint64
@@ -7,4 +8,3 @@ type Config struct {
 		InitialOffset uint64
 	}
 }
-
