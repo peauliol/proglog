@@ -1,7 +1,6 @@
 package log
 
 import (
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -15,11 +14,11 @@ import (
 )
 
 type Log struct {
-	mu		sync.RWMutex
-	Dir		string
-	Config		Config
-	activeSegment	*segment
-	segments	[]*segment
+	mu            sync.RWMutex
+	Dir           string
+	Config        Config
+	activeSegment *segment
+	segments      []*segment
 }
 
 func NewLog(dir string, c Config) (*Log, error) {
@@ -30,8 +29,8 @@ func NewLog(dir string, c Config) (*Log, error) {
 		c.Segment.MaxIndexBytes = 1024
 	}
 	l := &Log{
-		Dir:	dir,
-		Config:	c,
+		Dir:    dir,
+		Config: c,
 	}
 	return l, l.setup()
 }
@@ -53,7 +52,7 @@ func (l *Log) setup() error {
 	sort.Slice(baseOffsets, func(i, j int) bool {
 		return baseOffsets[i] < baseOffsets[j]
 	})
-	for i:=0; i < len(baseOffsets); i++ {
+	for i := 0; i < len(baseOffsets); i++ {
 		if err = l.newSegment(baseOffsets[i]); err != nil {
 			return err
 		}
@@ -78,7 +77,7 @@ func (l *Log) Append(record *api.Record) (uint64, error) {
 		return 0, err
 	}
 	if l.activeSegment.IsMaxed() {
-		err = l.newSegment(off +1)
+		err = l.newSegment(off + 1)
 	}
 	return off, err
 }
@@ -94,7 +93,7 @@ func (l *Log) Read(off uint64) (*api.Record, error) {
 		}
 	}
 	if s == nil || s.nextOffset <= off {
-		return nil, fmt.Errorf("offset out of range: %d", off)
+		return nil, api.ErrOffsetOutOfRange{Offset: off}
 	}
 	return s.Read(off)
 }
@@ -160,9 +159,9 @@ func (l *Log) Truncate(lowest uint64) error {
 func (l *Log) Reader() io.Reader {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
-	readers := make ([]io.Reader, len(l.segments))
+	readers := make([]io.Reader, len(l.segments))
 	for i, segment := range l.segments {
-		readers[i] = &originReader{segment.store,0}
+		readers[i] = &originReader{segment.store, 0}
 	}
 	return io.MultiReader(readers...)
 }
@@ -187,5 +186,3 @@ func (l *Log) newSegment(off uint64) error {
 	l.activeSegment = s
 	return nil
 }
-
-
