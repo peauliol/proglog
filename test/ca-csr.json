@@ -1,0 +1,16 @@
+{
+  "CN": "PALO CA",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "CA",
+      "L": "ON",
+      "ST": "Camps",
+      "O": "PALO INC",
+      "OU": "CA Services"
+    }
+  ]
+}
