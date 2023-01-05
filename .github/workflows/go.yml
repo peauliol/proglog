@@ -19,10 +19,10 @@ jobs:
         go-version: 1.18
 
     - name: install cfssl
-      run: go get github.com/cloudflare/cfssl/cmd/cfssl@v1.4.1
+      run: go install github.com/cloudflare/cfssl/cmd/cfssl@v1.4.1
 
     - name: install cfssljson
-      run: go get github.com/cloudflare/cfssl/cmd/cfssljson@v1.4.1
+      run: go install github.com/cloudflare/cfssl/cmd/cfssljson@v1.4.1
 
     - name: Setup CA for TLS
       run: make gencert
