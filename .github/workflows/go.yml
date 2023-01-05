@@ -25,7 +25,7 @@ jobs:
       run: go install github.com/cloudflare/cfssl/cmd/cfssljson@v1.4.1
 
     - name: Setup CA for TLS
-      run: make gencert
+      run: make init gencert
 
     - name: Build
       run: go build -v ./...
