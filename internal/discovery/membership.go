@@ -77,10 +77,10 @@ func (m *Membership) eventHandler() {
 				}
 				m.handleJoin(member)
 			}
-		case serf.EventMemberLeave:
+		case serf.EventMemberLeave, serf.EventMemberFailed:
 			for _, member := range e.(serf.MemberEvent).Members {
 				if m.isLocal(member) {
-					continue
+					return
 				}
 				m.handleLeave(member)
 			}

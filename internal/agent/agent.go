@@ -21,19 +21,6 @@ import (
 	"github.com/peauliol/proglog/internal/server"
 )
 
-type Agent struct {
-	Config
-
-	mux        cmux.CMux
-	log        *log.DistributedLog
-	server     *grpc.Server
-	membership *discovery.Membership
-
-	shutdown     bool
-	shutdowns    chan struct{}
-	shutdownLock sync.Mutex
-}
-
 type Config struct {
 	ServerTLSConfig *tls.Config
 	PeerTLSConfig   *tls.Config
@@ -53,6 +40,19 @@ func (c Config) RPCAddr() (string, error) {
 		return "", err
 	}
 	return fmt.Sprintf("%s:%d", host, c.RPCPort), nil
+}
+
+type Agent struct {
+	Config Config
+
+	mux        cmux.CMux
+	log        *log.DistributedLog
+	server     *grpc.Server
+	membership *discovery.Membership
+
+	shutdown     bool
+	shutdowns    chan struct{}
+	shutdownLock sync.Mutex
 }
 
 func New(config Config) (*Agent, error) {
@@ -87,7 +87,10 @@ func (a *Agent) setupLogger() error {
 }
 
 func (a *Agent) setupMux() error {
-	rpcAddr := fmt.Sprintf(":%d", a.Config.RPCPort)
+	rpcAddr := fmt.Sprintf(
+		":%d",
+		a.Config.RPCPort,
+	)
 	ln, err := net.Listen("tcp", rpcAddr)
 	if err != nil {
 		return err
@@ -106,11 +109,18 @@ func (a *Agent) setupLog() error {
 	})
 
 	logConfig := log.Config{}
-	logConfig.Raft.StreamLayer = log.NewStreamLayer(raftLn, a.Config.ServerTLSConfig, a.Config.PeerTLSConfig)
+	logConfig.Raft.StreamLayer = log.NewStreamLayer(
+		raftLn,
+		a.Config.ServerTLSConfig,
+		a.Config.PeerTLSConfig,
+	)
 	logConfig.Raft.LocalID = raft.ServerID(a.Config.NodeName)
 	logConfig.Raft.Bootstrap = a.Config.Bootstrap
 	var err error
-	a.log, err = log.NewDistributedLog(a.Config.DataDir, logConfig)
+	a.log, err = log.NewDistributedLog(
+		a.Config.DataDir,
+		logConfig,
+	)
 	if err != nil {
 		return err
 	}
@@ -165,6 +175,14 @@ func (a *Agent) setupMembership() error {
 	return err
 }
 
+func (a *Agent) serve() error {
+	if err := a.mux.Serve(); err != nil {
+		_ = a.Shutdown()
+		return err
+	}
+	return nil
+}
+
 func (a *Agent) Shutdown() error {
 	a.shutdownLock.Lock()
 	defer a.shutdownLock.Unlock()
@@ -186,14 +204,6 @@ func (a *Agent) Shutdown() error {
 		if err := fn(); err != nil {
 			return err
 		}
-	}
-	return nil
-}
-
-func (a *Agent) serve() error {
-	if err := a.mux.Serve(); err != nil {
-		_ = a.Shutdown()
-		return err
 	}
 	return nil
 }
