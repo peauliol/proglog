@@ -94,8 +94,9 @@ type clientConn struct {
 	state resolver.State
 }
 
-func (c *clientConn) UpdateState(state resolver.State) {
+func (c *clientConn) UpdateState(state resolver.State) error {
 	c.state = state
+	return nil
 }
 
 func (c *clientConn) ReporError(err error) {}
