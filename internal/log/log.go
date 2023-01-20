@@ -98,6 +98,16 @@ func (l *Log) Read(off uint64) (*api.Record, error) {
 	return s.Read(off)
 }
 
+func (l *Log) newSegment(off uint64) error {
+	s, err := newSegment(l.Dir, off, l.Config)
+	if err != nil {
+		return err
+	}
+	l.segments = append(l.segments, s)
+	l.activeSegment = s
+	return nil
+}
+
 func (l *Log) Close() error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -175,14 +185,4 @@ func (o *originReader) Read(p []byte) (int, error) {
 	n, err := o.ReadAt(p, o.off)
 	o.off += int64(n)
 	return n, err
-}
-
-func (l *Log) newSegment(off uint64) error {
-	s, err := newSegment(l.Dir, off, l.Config)
-	if err != nil {
-		return err
-	}
-	l.segments = append(l.segments, s)
-	l.activeSegment = s
-	return nil
 }

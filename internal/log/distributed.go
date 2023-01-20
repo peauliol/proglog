@@ -159,13 +159,15 @@ func (l *DistributedLog) Join(id, addr string) error {
 
 	for _, srv := range configFuture.Configuration().Servers {
 		if srv.ID == serverID || srv.Address == serverAddr {
-			// server has already joined
-			return nil
-		}
-		// remove the existing server
-		removeFuture := l.raft.RemoveServer(serverID, 0, 0)
-		if err := removeFuture.Error(); err != nil {
-			return err
+			if srv.ID == serverID && srv.Address == serverAddr {
+				// server has already joined
+				return nil
+			}
+			// remove the existing server
+			removeFuture := l.raft.RemoveServer(serverID, 0, 0)
+			if err := removeFuture.Error(); err != nil {
+				return err
+			}
 		}
 	}
 	addFuture := l.raft.AddVoter(serverID, serverAddr, 0, 0)

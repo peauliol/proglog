@@ -98,7 +98,7 @@ func (c *clientConn) UpdateState(state resolver.State) {
 	c.state = state
 }
 
-func (c *clientConn) ReporError(err error) {}
+func (c *clientConn) ReportError(err error) {}
 
 func (c *clientConn) NewAddress(addrs []resolver.Address) {}
 
