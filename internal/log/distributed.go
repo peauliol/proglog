@@ -19,12 +19,14 @@ import (
 )
 
 type DistributedLog struct {
-	config Config
-	log    *Log
-	raft   *raft.Raft
+	config   Config
+	log      *Log
+	raft     *raft.Raft
+	logStore *logStore
 }
 
 func NewDistributedLog(dataDir string, config Config) (*DistributedLog, error) {
+	fmt.Println("NewDistributedLog: ", dataDir)
 	l := &DistributedLog{
 		config: config,
 	}
@@ -43,20 +45,23 @@ func (l *DistributedLog) setupLog(dataDir string) error {
 		return err
 	}
 	var err error
+	fmt.Println("START NewLog: ", dataDir)
 	l.log, err = NewLog(logDir, l.config)
+	fmt.Println("END NewLog: ", dataDir)
 	return err
 }
 
 func (l *DistributedLog) setupRaft(dataDir string) error {
+	var err error
 	fsm := &fsm{log: l.log}
 
 	logDir := filepath.Join(dataDir, "raft", "log")
-	if err := os.MkdirAll(logDir, 0755); err != nil {
+	if err = os.MkdirAll(logDir, 0755); err != nil {
 		return err
 	}
 	logConfig := l.config
 	logConfig.Segment.InitialOffset = 1
-	logStore, err := newLogStore(logDir, logConfig)
+	l.logStore, err = newLogStore(logDir, logConfig)
 	if err != nil {
 		return err
 	}
@@ -91,23 +96,29 @@ func (l *DistributedLog) setupRaft(dataDir string) error {
 		config.CommitTimeout = l.config.Raft.CommitTimeout
 	}
 
-	l.raft, err = raft.NewRaft(config, fsm, logStore, stableStore, snapshotStore, transport)
+	lastIndex, _ := l.logStore.LastIndex()
+	fmt.Println("START NewRaft: ", lastIndex)
+	l.raft, err = raft.NewRaft(config, fsm, l.logStore, stableStore, snapshotStore, transport)
 	if err != nil {
+		fmt.Println("NewRaft err: ", err)
 		return err
 	}
-	hasState, err := raft.HasExistingState(logStore, stableStore, snapshotStore)
+	fmt.Println("hasExistingState")
+	hasState, err := raft.HasExistingState(l.logStore, stableStore, snapshotStore)
 	if err != nil {
 		return err
 	}
 	if l.config.Raft.Bootstrap && !hasState {
+		fmt.Println("bootstrap withouth state: ", config.LocalID, l.config.Raft.BindAddr)
 		config := raft.Configuration{
 			Servers: []raft.Server{{
 				ID:      config.LocalID,
-				Address: transport.LocalAddr(),
+				Address: raft.ServerAddress(l.config.Raft.BindAddr),
 			}},
 		}
 		err = l.raft.BootstrapCluster(config).Error()
 	}
+	fmt.Println("END NewRaft")
 	return err
 }
 
@@ -170,6 +181,7 @@ func (l *DistributedLog) Join(id, addr string) error {
 			}
 		}
 	}
+	fmt.Println("raft.AddVoter: ", serverID, serverAddr)
 	addFuture := l.raft.AddVoter(serverID, serverAddr, 0, 0)
 	if err := addFuture.Error(); err != nil {
 		return err
@@ -201,6 +213,9 @@ func (l *DistributedLog) WaitForLeader(timeout time.Duration) error {
 func (l *DistributedLog) Close() error {
 	f := l.raft.Shutdown()
 	if err := f.Error(); err != nil {
+		return err
+	}
+	if err := l.logStore.Close(); err != nil {
 		return err
 	}
 	return l.log.Close()
@@ -334,8 +349,10 @@ func (l *logStore) LastIndex() (uint64, error) {
 }
 
 func (l *logStore) GetLog(index uint64, out *raft.Log) error {
+	fmt.Println("GetLog: ", index)
 	in, err := l.Read(index)
 	if err != nil {
+		fmt.Println("error: ", err)
 		return err
 	}
 	out.Data = in.Value

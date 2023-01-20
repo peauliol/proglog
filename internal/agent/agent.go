@@ -55,23 +55,44 @@ type Agent struct {
 	shutdownLock sync.Mutex
 }
 
-func New(config Config) (*Agent, error) {
+func New(config Config, isTest bool) (*Agent, error) {
 	a := &Agent{
 		Config:    config,
 		shutdowns: make(chan struct{}),
 	}
-	setup := []func() error{
-		a.setupLogger,
-		a.setupMux,
-		a.setupLog,
-		a.setupServer,
-		a.setupMembership,
-	}
 
-	for _, fn := range setup {
-		if err := fn(); err != nil {
+	var rpcAddr string
+	if isTest {
+		addr, err := net.ResolveTCPAddr("tcp", a.Config.BindAddr)
+		if err != nil {
 			return nil, err
 		}
+		rpcAddr = fmt.Sprintf(
+			"%s:%d",
+			addr.IP.String(),
+			a.Config.RPCPort,
+		)
+	} else {
+		rpcAddr = fmt.Sprintf(
+			":%d",
+			a.Config.RPCPort,
+		)
+	}
+
+	if err := a.setupLogger(); err != nil {
+		return nil, err
+	}
+	if err := a.setupMux(rpcAddr); err != nil {
+		return nil, err
+	}
+	if err := a.setupLog(); err != nil {
+		return nil, err
+	}
+	if err := a.setupServer(); err != nil {
+		return nil, err
+	}
+	if err := a.setupMembership(); err != nil {
+		return nil, err
 	}
 	go a.serve()
 	return a, nil
@@ -86,11 +107,7 @@ func (a *Agent) setupLogger() error {
 	return nil
 }
 
-func (a *Agent) setupMux() error {
-	rpcAddr := fmt.Sprintf(
-		":%d",
-		a.Config.RPCPort,
-	)
+func (a *Agent) setupMux(rpcAddr string) error {
 	ln, err := net.Listen("tcp", rpcAddr)
 	if err != nil {
 		return err
@@ -114,9 +131,13 @@ func (a *Agent) setupLog() error {
 		a.Config.ServerTLSConfig,
 		a.Config.PeerTLSConfig,
 	)
+	rpcAddr, err := a.Config.RPCAddr()
+	if err != nil {
+		return err
+	}
+	logConfig.Raft.BindAddr = rpcAddr
 	logConfig.Raft.LocalID = raft.ServerID(a.Config.NodeName)
 	logConfig.Raft.Bootstrap = a.Config.Bootstrap
-	var err error
 	a.log, err = log.NewDistributedLog(
 		a.Config.DataDir,
 		logConfig,
