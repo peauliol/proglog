@@ -1,6 +1,6 @@
 module github.com/peauliol/proglog
 
-go 1.17
+go 1.19
 
 require (
 	github.com/casbin/casbin v1.9.1
@@ -24,7 +24,6 @@ require (
 require (
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible // indirect
 	github.com/armon/go-metrics v0.3.8 // indirect
-	github.com/boltdb/bolt v1.3.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/golang/groupcache v0.0.0-20190702054246-869f871628b6 // indirect
 	github.com/google/btree v0.0.0-20180813153112-4030bb1f1f0c // indirect
