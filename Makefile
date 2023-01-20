@@ -50,4 +50,15 @@ compile:
 			--go-grpc_opt=paths=source_relative \
 			--proto_path=.
 
+TAG ?= 0.0.1
+build-docker:
+	docker build -t github.com/peauliol/proglog:$(TAG) .
 
+kind-load-image:
+	kind load docker-image github.com/peauliol/proglog:$(TAG) --name kind
+
+helm-install:
+	helm install proglog deploy/proglog
+
+helm-uninstall:
+	helm uninstall proglog
